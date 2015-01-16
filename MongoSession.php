@@ -424,7 +424,7 @@ class MongoSession {
         //update/insert our session data
         $this->sessionDoc = $this->sessions->findOne(array('_id' => $sid));
         if (!$this->sessionDoc) {
-            print "COUDN't FIND SID: $sid<p>";
+            //print "COUDN'T FIND SID: $sid<p>";
             $this->sessionDoc = array();
             $this->sessionDoc['_id'] = $sid;
             $this->sessionDoc['started'] = new MongoDate();
