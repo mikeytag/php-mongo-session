@@ -1,4 +1,5 @@
 <?php
+ini_set('session.serialize_handler', 'php_serialize');
 /**
  * @author            Nick Ilyin nick.ilyin@gmail.com
  * @version            v0.1
@@ -25,8 +26,7 @@
  *                    Then you can do beautiful things like session_start() or $_SESSION['coolest'] = 'MongoSession!';
  *
  */
-class MongoSession
-{
+class MongoSession {
     /**
      * Using singleton pattern, so here's the instance.
      * @var MongoSession
@@ -45,28 +45,28 @@ class MongoSession
      * unless you have load balancing where a different host is being passed.
      */
     private static $config = array(
-        'name'              => 'PHPSESSID',
-        'connection'        => 'mongodb://localhost:27017',
-        'connection_opts'   => array(),//options to pass to MongoClient
-        'db'                => 'mySessDb',
-        'collection'        => 'sessions',
-        'lockcollection'    => 'sessions_lock',
-        'timeout'           => 3600,//seconds
-        'cache'             => 'private_no_expire',
-        'cache_expiry'      => 10,//minutes
-        'cookie_path'       => '/',
-        'cookie_domain'     => '.thisdomain.com',
-        'cookie_secure'     => false,
-        'cookie_httponly'   => false,
-        'autostart'         => false,
-        'locktimeout'       => 30,//seconds
-        'locksleep'         => 100,//milliseconds
-        'cleanonclose'      => false,//this is an option for testing purposes
-        'error_handler'     => 'trigger_error',
-        'logger'            => false,//by default, no logging
-        'machine_id'        => false,//identify the machine, if you want for debugs
-        'write_concern'     => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
-        'write_journal'     => false,//by default, no journaling required before ack
+        'name' => 'PHPSESSID',
+        'connection' => 'mongodb://localhost:27017',
+        'connection_opts' => array(),//options to pass to MongoClient
+        'db' => 'mySessDb',
+        'collection' => 'sessions',
+        'lockcollection' => 'sessions_lock',
+        'timeout' => 3600,//seconds
+        'cache' => 'private_no_expire',
+        'cache_expiry' => 10,//minutes
+        'cookie_path' => '/',
+        'cookie_domain' => '.thisdomain.com',
+        'cookie_secure' => false,
+        'cookie_httponly' => false,
+        'autostart' => false,
+        'locktimeout' => 30,//seconds
+        'locksleep' => 100,//milliseconds
+        'cleanonclose' => false,//this is an option for testing purposes
+        'error_handler' => 'trigger_error',
+        'logger' => false,//by default, no logging
+        'machine_id' => false,//identify the machine, if you want for debugs
+        'write_concern' => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
+        'write_journal' => false,//by default, no journaling required before ack
     );
 
     /**
@@ -124,13 +124,13 @@ class MongoSession
      */
     private $lockAcquired = false;
 
+
     /**
      * Set the configuration.
      * @var        $config        array
      * @return null
      */
-    public static function config(array $config = array())
-    {
+    public static function config(array $config = array()) {
         //configs
         self::$config = array_merge(self::$config, $config);
     }
@@ -139,8 +139,7 @@ class MongoSession
      * Get the instance, or set up a new one.
      * @return MongoSession
      */
-    public static function instance()
-    {
+    public static function instance() {
         if (self::$instance) {
             return self::$instance;
         }
@@ -160,8 +159,7 @@ class MongoSession
      *                         script.
      * @return null
      */
-    public static function init($dbInit = false)
-    {
+    public static function init($dbInit = false) {
         $i = self::instance();
 
         if ($dbInit) {
@@ -174,8 +172,7 @@ class MongoSession
      * Private constructor to satisfy the singleton design pattern. You should
      * be calling MongoSession::init() prior to starting sessions.
      */
-    private function __construct()
-    {
+    private function __construct() {
         //set the configs
         $this->setConfig(self::$config);
 
@@ -192,23 +189,23 @@ class MongoSession
 
         //Mongo/MongoClient( uri, options )
         $mongo_options = array();
-        foreach ($this->getConfig('connection_opts') as $optname=>$optvalue) {
-          $mongo_options[$optname] = $optvalue;
+        foreach ($this->getConfig('connection_opts') as $optname => $optvalue) {
+            $mongo_options[$optname] = $optvalue;
         }
 
         //Mongo() defunct, use MongoClient() if available
-        $mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
+        $mongo_class = ((class_exists('MongoClient')) ? ('MongoClient') : ('Mongo'));
         $this->conn = new $mongo_class(
-                                       $this->getConfig('connection'),
-                                       $mongo_options
-                                       );
+            $this->getConfig('connection'),
+            $mongo_options
+        );
 
         if ($mongo_class == 'MongoClient') {
-          //set write concern from config
-          $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
+            //set write concern from config
+            $this->instConfig['write_options'] = array('w' => $this->getConfig('write_concern'), 'j' => $this->getConfig('write_journal'));
         } else {
-          //defunct 'safe' write, use safe mode if w > 0
-          $this->instConfig['write_options'] = array('safe'=>$this->getConfig('write_concern')>0);
+            //defunct 'safe' write, use safe mode if w > 0
+            $this->instConfig['write_options'] = array('safe' => $this->getConfig('write_concern') > 0);
         }
 
         //make the connection explicit
@@ -238,25 +235,23 @@ class MongoSession
     /**
      * Builds indices on the appropriate collections. No need to call directly.
      */
-    public function dbInit()
-    {
-      $mongo_index = ( (phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex') );
-      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection'));
-      $this->sessions->$mongo_index(array(
-                                          'last_accessed' => 1
-                                          ));
-      $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
-      $this->locks->$mongo_index(array(
-                                       'created' => 1
-                                       ));
+    public function dbInit() {
+        $mongo_index = ((phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex'));
+        $this->log("maint: {$mongo_index} on ".$this->getConfig('collection'));
+        $this->sessions->$mongo_index(array(
+            'last_accessed' => 1
+        ));
+        $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
+        $this->locks->$mongo_index(array(
+            'created' => 1
+        ));
     }
 
     /**
      * Set the configuration array for this instance.
      * @param array $config The configuration array (see static::$config for format)
      */
-    private function setConfig(array $config)
-    {
+    private function setConfig(array $config) {
         $this->instConfig = $config;
     }
 
@@ -265,12 +260,12 @@ class MongoSession
      * @var $key    string        The key of the configuration you're looking.
      * @return mixed
      */
-    private function getConfig($key)
-    {
-        if (!array_key_exists($key, $this->instConfig))
+    private function getConfig($key) {
+        if (!array_key_exists($key, $this->instConfig)) {
             return null;
-        else
+        } else {
             return $this->instConfig[$key];
+        }
     }
 
     /**
@@ -283,19 +278,20 @@ class MongoSession
      * application design. Overall, one should be extremely careful with making
      * sure that the Mongo database can handle the load you'll be sending its way.
      *
-     * @param  string  $sid The session ID to acquire a lock on.
+     * @param  string $sid The session ID to acquire a lock on.
      * @return boolean True if succeeded, false if not.
      */
-    private function lock($sid)
-    {
+    private function lock($sid) {
         //check if we've already acquired a lock
-        if ($this->lockAcquired) return true;
+        if ($this->lockAcquired) {
+            return true;
+        }
 
         $timeout = $this->getConfig('locktimeout') * 1000000;//microseconds we want
         $sleep = $this->getConfig('locksleep') * 1000;//we want microseconds
         $start = microtime(true);
 
-        $this->log('Trying to acquire a lock on ' . $sid);
+        $this->log('Trying to acquire a lock on '.$sid);
 
         $waited = false;
 
@@ -308,35 +304,37 @@ class MongoSession
                 $lock['_id'] = $sid;
                 $lock['created'] = new MongoDate();
 
-                if ($mid = $this->getConfig('machine_id'))
+                if ($mid = $this->getConfig('machine_id')) {
                     $lock['mid'] = $mid;
+                }
 
                 try {
-                  $res = $this->locks->insert($lock, $this->getConfig('write_options'));
+                    $res = $this->locks->insert($lock, $this->getConfig('write_options'));
                 } catch (MongoDuplicateKeyException $e) {
-                  //duplicate key may occur during lock race
-                  continue;
-                } catch (MongoCursorException $e) {
-                  if (in_array($e->getCode(), array(11001, 11000, 12582))) {
-                    //catch duplicate key if no exception thrown
+                    //duplicate key may occur during lock race
                     continue;
-                  } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
-                    //replication error, to avoid partial write/lockout override write concern and unlock before error
-                    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
-                    //force unlock to prevent lockout from partial write
-                    $this->unlock($sid, true);
-                  }
-                  //log exception and fail lock
-                  $this->log('exception: ' . $e->getMessage());
-                  break 1;
+                } catch (MongoCursorException $e) {
+                    if (in_array($e->getCode(), array(11001, 11000, 12582))) {
+                        //catch duplicate key if no exception thrown
+                        continue;
+                    } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
+                        //replication error, to avoid partial write/lockout override write concern and unlock before error
+                        $this->instConfig['write_options'] = ((class_exists('MongoClient')) ? (array('w' => 0)) : (array('safe' => false)));
+                        //force unlock to prevent lockout from partial write
+                        $this->unlock($sid, true);
+                    }
+                    //log exception and fail lock
+                    $this->log('exception: '.$e->getMessage());
+                    break 1;
                 }
 
                 $this->lockAcquired = true;
 
-                $this->log('Lock acquired @ ' . date('Y-m-d H:i:s', $lock['created']->sec));
+                $this->log('Lock acquired @ '.date('Y-m-d H:i:s', $lock['created']->sec));
 
-                if ($waited)
-                    $this->log('LOCK_WAIT_SECONDS:' . number_format(microtime(true) - $start, 5));
+                if ($waited) {
+                    $this->log('LOCK_WAIT_SECONDS:'.number_format(microtime(true) - $start, 5));
+                }
 
                 return true;
             }
@@ -348,15 +346,14 @@ class MongoSession
         } while ($timeout > 0);
 
         //no lock could be acquired, so try to use an error handler for this
-        $this->errorHandler('Could not acquire lock for ' . $sid);
+        $this->errorHandler('Could not acquire lock for '.$sid);
     }
 
     /**
      * Release lock **only** if this instance had acquired it.
      * @param string $sid The session ID that php passes.
      */
-    private function unlock($sid, $force=false)
-    {
+    private function unlock($sid, $force = false) {
         if ($this->lockAcquired || $force) {
             $this->lockAcquired = false;
             $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
@@ -367,12 +364,11 @@ class MongoSession
      * A useless method since this is where file handling would occur, except there's
      * no files to open and the database connection was opened in the constructor,
      * so this just needs to exist but doesn't actually do anythiing.
-     * @param  string  $path The storage path that php passes. Not relevant to Mongo.
-     * @param  string  $name The name of the session, defaults to PHPSESSID but could be anything.
+     * @param  string $path The storage path that php passes. Not relevant to Mongo.
+     * @param  string $name The name of the session, defaults to PHPSESSID but could be anything.
      * @return boolean Always true.
      */
-    public function open($path, $name)
-    {
+    public function open($path, $name) {
         return true;
     }
 
@@ -383,8 +379,7 @@ class MongoSession
      * collection, but on production you shouldn't be doing that on every run.
      * @return boolean true
      */
-    public function close()
-    {
+    public function close() {
         //release any locks
         $this->unlock($this->sid);
 
@@ -404,13 +399,9 @@ class MongoSession
      *                    serialized string. In this case we're storing in the DB as MongoBinData since
      *                    UTF-8 is harder to enforce than just storing as binary.
      */
-    public function read($sid)
-    {
+    public function read($sid) {
         //save the session ID for closing later
         $this->sid = $sid;
-
-        //a lock MUST be acquired, but the complexity is in the lock() method
-        $this->lock($sid);
 
         $this->sessionDoc = $this->sessions->findOne(array('_id' => $sid));
 
@@ -424,14 +415,16 @@ class MongoSession
 
     /**
      * Save the session data.
-     * @param  string  $sid  The session ID that PHP passes.
-     * @param  string  $data The session serialized data string.
+     * @param  string $sid The session ID that PHP passes.
+     * @param  string $data The session serialized data string.
      * @return boolean True always.
      */
-    public function write($sid, /*string*/ $data)
-    {
+    public function write($sid, /*string*/
+                          $data) {
         //update/insert our session data
+        $this->sessionDoc = $this->sessions->findOne(array('_id' => $sid));
         if (!$this->sessionDoc) {
+            print "COUDN't FIND SID: $sid<p>";
             $this->sessionDoc = array();
             $this->sessionDoc['_id'] = $sid;
             $this->sessionDoc['started'] = new MongoDate();
@@ -439,19 +432,78 @@ class MongoSession
 
         //there could have been a session regen so we need to be careful with the $sid here and set it anyway
         if ($this->sid != $sid) {
-            //need to unlock old sid
-            $this->unlock($this->sid);
-
             //set the new one
             $this->sid = $sid;
-            $this->lock($this->sid);//@TODO shouldn't we try to see if this succeeded first?
 
             //and also make sure we're going to write to the correct document
             $this->sessionDoc['_id'] = $sid;
         }
 
+        //loop through the session array and only store things where now is more recent
+        $session_data_array = unserialize($this->sessionDoc['data']->bin);
+        //print "<pre>DATA: $data\n\n\nSESSION DATA ARRAY: ".print_r($session_data_array, true);
+        $data_array = unserialize($data);
+        //print "DATA ARRAY: ".print_r($data_array, true);
+        foreach ($data_array as $key => $val) {
+            if (strpos($key, '_SMT') !== false) {
+                //ignore the meta timestamp keys
+                continue;
+            }
+            if (!isset($session_data_array[$key])) {
+                //we are storing something new so just write it with a timestamp entry
+                $session_data_array[$key] = $val;
+                $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+            } else {
+                //ok there is an existing key
+                if (!isset($session_data_array[$key.'_SMT'])) {
+                    //for whatever reason there is no timestamp for this entry
+                    //so assume that we are the winner here
+                    $session_data_array[$key] = $val;
+                    $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                } else {
+                    //there is a timestamp value so check to make sure that we are newer
+                    if (serialize($session_data_array[$key]) != serialize($val)) {
+                        //session key val has changed so update only if the script that wrote it
+                        //is older than the microtime of when our script started
+                        if ($session_data_array[$key.'_SMT'] < $_SERVER['REQUEST_TIME_FLOAT']) {
+                            $session_data_array[$key] = $val;
+                            $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                        }
+                    }
+                }
+            }
+        }
+
+        //now we need to loop through $session_data_array to see if any keys have been deleted
+        foreach ($session_data_array as $key => $val) {
+            if (strpos($key, '_SMT') !== false) {
+                //ignore the meta timestamp keys
+                continue;
+            }
+            if (!isset($data_array[$key])) {
+                //the key is no longer in our memory data array
+                if (!isset($session_data_array[$key.'_SMT'])) {
+                    //for whatever reason there is no timestamp for this entry
+                    //so assume that we are the winner here
+                    unset($session_data_array[$key]);
+                } else {
+                    //there is a timestamp value so check to make sure that we are newer
+                    //delete only if the script that wrote it
+                    //is older than the microtime of when our script started
+                    if ($session_data_array[$key.'_SMT'] < $_SERVER['REQUEST_TIME_FLOAT']) {
+                        unset($session_data_array[$key]);
+                        unset($session_data_array[$key.'_SMT']);
+                    }
+                }
+            }
+        }
+
+        //print "FINAL SESSION ARRAY: ".print_r($session_data_array, true);
+
         $this->sessionDoc['last_accessed'] = new MongoDate();
-        $this->sessionDoc['data'] = new MongoBinData($data, MongoBinData::BYTE_ARRAY);
+        $this->sessionDoc['data'] = new MongoBinData(serialize($session_data_array), MongoBinData::BYTE_ARRAY);
+
+        //print "sessionDoc: ".print_r($this->sessionDoc, true);
 
         $this->sessions->save($this->sessionDoc, $this->getConfig('write_options'));
 
@@ -461,8 +513,7 @@ class MongoSession
     /**
      * Tries to invoke the error handler specified in settings.
      */
-    private function errorHandler($msg)
-    {
+    private function errorHandler($msg) {
         $waited = $this->getConfig('locktimeout');
         $this->log("PANIC! {$this->sid} cannot be acquired after waiting for {$waited}s. ");
         $h = $this->getConfig('error_handler');
@@ -475,20 +526,20 @@ class MongoSession
     /**
      * For logging, if we want to.
      */
-    private function log($msg)
-    {
+    private function log($msg) {
         $logger = $this->getConfig('logger');
-        if (!$logger) return false;
+        if (!$logger) {
+            return false;
+        }
         return call_user_func_array($logger, array($msg));
     }
 
     /**
      * Destroy the session.
-     * @param  string  $sid The session ID to destroy.
+     * @param  string $sid The session ID to destroy.
      * @return boolean True always.
      */
-    public function destroy($sid)
-    {
+    public function destroy($sid) {
         $this->sessions->remove(array('_id' => $sid), $this->getConfig('write_options'));
 
         return true;
@@ -496,11 +547,10 @@ class MongoSession
 
     /**
      * The garbage collection function invoked by PHP.
-     * @param  int     $lifetime The lifetime param, defaults to 1440 seconds in PHP.
+     * @param  int $lifetime The lifetime param, defaults to 1440 seconds in PHP.
      * @return boolean True always.
      */
-    public function gc($lifetime = 0)
-    {
+    public function gc($lifetime = 0) {
         $timeout = $this->getConfig('timeout');
 
         //find all sessions that are older than $timeout
@@ -509,7 +559,7 @@ class MongoSession
         //no ack required
         $this->sessions->remove(
             array('last_accessed' => array('$lt' => new MongoDate($olderThan))),
-            ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
+            ((class_exists('MongoClient')) ? (array('w' => 0)) : (array('safe' => false)))
         );
 
         return true;
