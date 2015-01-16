@@ -1,5 +1,6 @@
 <?php
 ini_set('session.serialize_handler', 'php_serialize');
+
 /**
  * @author            Nick Ilyin nick.ilyin@gmail.com
  * @version            v0.1
@@ -455,16 +456,16 @@ class MongoSession {
                 $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
             } else {
                 //ok there is an existing key
-                if (!isset($session_data_array[$key.'_SMT'])) {
-                    //for whatever reason there is no timestamp for this entry
-                    //so assume that we are the winner here
-                    $session_data_array[$key] = $val;
-                    $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
-                } else {
-                    //there is a timestamp value so check to make sure that we are newer
-                    if (serialize($session_data_array[$key]) != serialize($val)) {
-                        //session key val has changed so update only if the script that wrote it
-                        //is older than the microtime of when our script started
+                if (serialize($session_data_array[$key]) != serialize($val)) {
+                    //session key val has changed so update only if the script that wrote it
+                    //is older than the microtime of when our script started
+                    if (!isset($session_data_array[$key.'_SMT'])) {
+                        //for whatever reason there is no timestamp for this entry
+                        //so assume that we are the winner here
+                        $session_data_array[$key] = $val;
+                        $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                    } else {
+                        //there is a timestamp value so check to make sure that we are newer
                         if ($session_data_array[$key.'_SMT'] < $_SERVER['REQUEST_TIME_FLOAT']) {
                             $session_data_array[$key] = $val;
                             $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
