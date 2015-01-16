@@ -445,6 +445,7 @@ class MongoSession {
         //print "<pre>DATA: $data\n\n\nSESSION DATA ARRAY: ".print_r($session_data_array, true);
         $data_array = unserialize($data);
         //print "DATA ARRAY: ".print_r($data_array, true);
+        $something_changed = false;
         foreach ($data_array as $key => $val) {
             if (strpos($key, '_SMT') !== false) {
                 //ignore the meta timestamp keys
@@ -454,6 +455,7 @@ class MongoSession {
                 //we are storing something new so just write it with a timestamp entry
                 $session_data_array[$key] = $val;
                 $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                $something_changed = true;
             } else {
                 //ok there is an existing key
                 if (serialize($session_data_array[$key]) != serialize($val)) {
@@ -464,11 +466,13 @@ class MongoSession {
                         //so assume that we are the winner here
                         $session_data_array[$key] = $val;
                         $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                        $something_changed = true;
                     } else {
                         //there is a timestamp value so check to make sure that we are newer
                         if ($session_data_array[$key.'_SMT'] < $_SERVER['REQUEST_TIME_FLOAT']) {
                             $session_data_array[$key] = $val;
                             $session_data_array[$key.'_SMT'] = $_SERVER['REQUEST_TIME_FLOAT'];
+                            $something_changed = true;
                         }
                     }
                 }
@@ -487,6 +491,7 @@ class MongoSession {
                     //for whatever reason there is no timestamp for this entry
                     //so assume that we are the winner here
                     unset($session_data_array[$key]);
+                    $something_changed = true;
                 } else {
                     //there is a timestamp value so check to make sure that we are newer
                     //delete only if the script that wrote it
@@ -494,6 +499,7 @@ class MongoSession {
                     if ($session_data_array[$key.'_SMT'] < $_SERVER['REQUEST_TIME_FLOAT']) {
                         unset($session_data_array[$key]);
                         unset($session_data_array[$key.'_SMT']);
+                        $something_changed = true;
                     }
                 }
             }
@@ -501,13 +507,17 @@ class MongoSession {
 
         //print "FINAL SESSION ARRAY: ".print_r($session_data_array, true);
 
-        $this->sessionDoc['last_accessed'] = new MongoDate();
-        $this->sessionDoc['data'] = new MongoBinData(serialize($session_data_array), MongoBinData::BYTE_ARRAY);
+        if ($something_changed) {
+            //print "SOMETHING CHANGED!";
+            $this->sessionDoc['last_accessed'] = new MongoDate();
+            $this->sessionDoc['data'] = new MongoBinData(serialize($session_data_array), MongoBinData::BYTE_ARRAY);
 
-        //print "sessionDoc: ".print_r($this->sessionDoc, true);
+            //print "sessionDoc: ".print_r($this->sessionDoc, true);
 
-        $this->sessions->save($this->sessionDoc, $this->getConfig('write_options'));
-
+            $this->sessions->save($this->sessionDoc, $this->getConfig('write_options'));
+        } else {
+            //print "NOTHING CHANGED!";
+        }
         return true;
     }
 
